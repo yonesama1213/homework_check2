@@ -89,15 +89,16 @@ if user_input_email:
     
     # --- 権限によるメニューの切り出し ---
     if is_teacher:
-         if is_teacher:
-        　 if user_email == SUPER_ADMIN:
+        # 管理者（米澤先生）と一般の先生を分ける
+        if user_email == "T.yonezawa@midorigls.onmicrosoft.com":
             # 【管理者】すべてのページ（教員管理を含む6つ）が見れる
             menu_list = [m_home, m_task_reg, m_hr, m_student, m_course, m_teacher]
-      　   else:
-            # 【教員】教員管理以外の5つのメニューが見れる
+        else:
+            # 【一般教員】教員管理以外の5つのメニューが見れる
             menu_list = [m_home, m_task_reg, m_hr, m_student, m_course]
+            
     elif is_student:
-        # 生徒：ホームと課題登録（2つ）のみ見れる
+        # 【生徒】ホームと課題登録（2つ）のみ見れる
         menu_list = [m_home, m_task_reg]
     else:
         # 未登録者
@@ -360,4 +361,5 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
