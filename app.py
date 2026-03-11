@@ -129,7 +129,7 @@ if user_input_email:
                 show = False
                 if is_teacher:
                     # 自分が担当、もしくは自分が担任/副担のHR
-                    if r['courses_info'] and r['courses_info']['teacher_name'] == current_user_full_name:
+                    if r['courses_info'] and current_user_full_name in r['courses_info']['teacher_name']:
                         show = True
                     elif r['hr_key']:
                         h_split = r['hr_key'].split('_')
@@ -388,5 +388,6 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
