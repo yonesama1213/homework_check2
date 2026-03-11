@@ -348,55 +348,82 @@ if user_input_email:
         if st.session_state.selected_course:
             # 【詳細画面】
             cid = st.session_state.selected_course
-            if st.button("← 戻る"): st.session_state.selected_course = None; st.rerun()
+            # 戻るボタンでサブページの状態もリセット
+            if st.button("← 戻る"): 
+                st.session_state.selected_course = None
+                st.session_state.course_sub_page = None
+                st.rerun()
+
             crs_res = supabase.table("courses_info").select("*").eq("id", cid).execute()
             if crs_res.data:
                 crs = crs_res.data[0]
                 st.subheader(f"📖 【{crs['subject_area']}】 {crs['name']} (担当: {crs['teacher_name']})")
-                b_cols = st.columns(4)
-                if b_cols[0].button("削除"): supabase.table("courses_info").delete().eq("id", cid).execute(); st.session_state.selected_course = None; st.rerun()
                 
-                # 履修生徒一覧
-                s_en = supabase.table("user_courses").select("students(class, number, last_name, first_name)").eq("course_id", cid).execute()
-                df_en = pd.DataFrame([{"クラス":r['students']['class'], "番号":r['students']['number'], "氏名":f"{r['students']['last_name']} {r['students']['first_name']}"} for r in s_en.data if r['students']])
-                if not df_en.empty: st.dataframe(df_en.sort_values(["クラス", "番号"]), hide_index=True, use_container_width=True)
-        else:
-            # 【一覧と新規登録のタブ】
-            t1, t2 = st.tabs(["授業一覧", "新規登録"])
-            with t1:
-                c_res = supabase.table("courses_info").select("*").order("subject_area").execute()
-                df_c = pd.DataFrame(c_res.data)
-                if not df_c.empty:
-                    for sa in sorted(df_c['subject_area'].unique()):
-                        st.write(f"#### {sa}")
-                        gc = df_c[df_c['subject_area'] == sa]
-                        cols = st.columns(4)
-                        for i, (_, r) in enumerate(gc.iterrows()):
-                            with cols[i%4]:
-                                with st.container(border=True):
-                                    st.write(f"**{r['name']}**\n\n{r['teacher_name']}")
-                                    if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): 
-                                        st.session_state.selected_course = r['id']; st.rerun()
-                else: st.info("登録されている授業はありません。")
+                b_cols = st.columns(4)
+                if b_cols[0].button("🗑️ 授業を削除"): 
+                    supabase.table("courses_info").delete().eq("id", cid).execute()
+                    st.session_state.selected_course = None; st.rerun()
+                # 登録画面を開くボタン
+                if b_cols[1].button("👥 生徒を登録"): 
+                    st.session_state.course_sub_page = "reg"; st.rerun()
+                
+                # --- 履修生徒の登録UI ---
+                if st.session_state.course_sub_page == "reg":
+                    with st.container(border=True):
+                        st.write("#### 履修生徒の追加登録")
+                        h_list = supabase.table("class_master").select("grade, class_name").order("grade").order("class_name").execute()
+                        class_options = [f"{r['grade']}年{r['class_name']}" for r in h_list.data]
+                        sel_h = st.selectbox("登録元のクラスを選択", ["-- 選択してください --"] + class_options)
+                        
+                        if sel_h != "-- 選択してください --":
+                            gv, cv = sel_h.split('年')
+                            s_res = supabase.table("students").select("*").eq("grade", gv).eq("class", cv).execute()
+                            df_s = pd.DataFrame(s_res.data)
+                            
+                            if not df_s.empty:
+                                reg_mode = st.radio("登録方法", ["クラス全員を一括登録", "名簿から個別に選ぶ"], horizontal=True)
+                                
+                                if reg_mode == "クラス全員を一括登録":
+                                    if st.button(f"{sel_h}の全員({len(df_s)}名)を履修登録する"):
+                                        for _, s_row in df_s.iterrows():
+                                            supabase.table("user_courses").upsert({"user_id": s_row['email'], "course_id": cid}).execute()
+                                        st.success("一括登録完了！"); st.rerun()
+                                
+                                else: # 個別選択モード
+                                    df_s.insert(0, "登録選択", False)
+                                    df_s = df_s.sort_values("email") # 学籍番号（メアド）順
+                                    ed_s = st.data_editor(
+                                        df_s[["登録選択", "number", "last_name", "first_name", "email"]],
+                                        column_config={
+                                            "登録選択": st.column_config.CheckboxColumn("選択", default=False),
+                                            "number": "番号", "last_name": "姓", "first_name": "名", "email": None
+                                        },
+                                        hide_index=True, use_container_width=True, key="course_stu_reg"
+                                    )
+                                    if st.button("選択した生徒を登録する"):
+                                        sel_stus = ed_s[ed_s["登録選択"] == True]
+                                        for _, s_row in sel_stus.iterrows():
+                                            supabase.table("user_courses").upsert({"user_id": s_row['email'], "course_id": cid}).execute()
+                                        st.success(f"{len(sel_stus)}名の登録が完了しました！"); st.rerun()
+                        
+                        if st.button("登録画面を閉じる"): 
+                            st.session_state.course_sub_page = None; st.rerun()
 
-            with t2:
-               with st.form("nc"):
-                    cs = st.selectbox("教科", sub_areas)
-                    cn = st.text_input("科目名")
-                    # 複数選択できるように multiselect に変更
-                    ct_list = st.multiselect("担当教員 (1名以上選択)", [t for t in teacher_options if t != "なし"])
-                    
-                    if st.form_submit_button("登録"):
-                        if cn and ct_list:
-                            # 選択された教員名をカンマ区切りで保存
-                            supabase.table("courses_info").insert({
-                                "subject_area": cs, 
-                                "name": cn, 
-                                "teacher_name": ", ".join(ct_list)
-                            }).execute()
-                            st.rerun()
-                        elif not ct_list:
-                            st.error("担当教員を1名以上選択してください。")
+                st.divider()
+                st.write("#### 現在の履修生徒一覧")
+                # 履修生徒一覧の取得（メールアドレスも含めて取得）
+                s_en = supabase.table("user_courses").select("students(class, number, last_name, first_name, email)").eq("course_id", cid).execute()
+                df_en = pd.DataFrame([
+                    {"クラス":r['students']['class'], "番号":r['students']['number'], 
+                     "氏名":f"{r['students']['last_name']} {r['students']['first_name']}",
+                     "email": r['students']['email']} 
+                    for r in s_en.data if r['students']
+                ])
+                if not df_en.empty:
+                    # メールアドレス（学籍番号）で並び替えて、email列は隠して表示
+                    st.dataframe(df_en.sort_values("email").drop(columns=["email"]), hide_index=True, use_container_width=True)
+                else:
+                    st.info("履修登録されている生徒はいません。")
     # --- 👨‍🏫 教員管理 ---
     elif sel_menu == m_teacher:
         st.header(m_teacher)
@@ -434,6 +461,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
