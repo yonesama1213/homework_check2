@@ -181,15 +181,19 @@ if user_input_email:
         with st.form("add_task_form_dynamic", clear_on_submit=True):
             target_option = None
             if task_type == "授業の課題":
+               if task_type == "授業の課題":
                 if is_teacher:
-                    c_res = supabase.table("courses_info").select("id, grade, name").eq("teacher_name", current_user_full_name).execute()
+                    # 【修正】 .eq から .ilike に変更し、自分の名前が含まれていれば表示されるようにしました
+                    c_res = supabase.table("courses_info").select("id, name, teacher_name").ilike("teacher_name", f"%{current_user_full_name}%").execute()
                 else:
                     uc_res = supabase.table("user_courses").select("course_id").eq("user_id", user_email).execute()
                     c_ids = [r['course_id'] for r in uc_res.data]
-                    c_res = supabase.table("courses_info").select("id, grade, name").in_("id", c_ids).execute()
+                    c_res = supabase.table("courses_info").select("id, name, teacher_name").in_("id", c_ids).execute()
+                
                 df_opt = pd.DataFrame(c_res.data)
                 if not df_opt.empty:
-                    df_opt["display"] = df_opt["grade"] + "年 " + df_opt["name"]
+                    # 【修正】学年を表示しない設定に合わせ、科目名と担当者を表示するようにしました
+                    df_opt["display"] = df_opt["name"] + " (" + df_opt["teacher_name"] + ")"
                     target_option = st.selectbox("対象の授業を選択", df_opt["display"].tolist())
             else:
                 if is_teacher:
@@ -485,6 +489,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
