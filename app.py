@@ -334,14 +334,23 @@ if user_input_email:
                 else: st.info("登録されている授業はありません。")
 
             with t2:
-                # 新規登録フォーム（学年なし・重複なし）
-                with st.form("nc"):
+               with st.form("nc"):
                     cs = st.selectbox("教科", sub_areas)
                     cn = st.text_input("科目名")
-                    ct = st.selectbox("担当教員", teacher_options)
+                    # 複数選択できるように multiselect に変更
+                    ct_list = st.multiselect("担当教員 (1名以上選択)", [t for t in teacher_options if t != "なし"])
+                    
                     if st.form_submit_button("登録"):
-                        supabase.table("courses_info").insert({"subject_area": cs, "name": cn, "teacher_name": ct}).execute()
-                        st.rerun()
+                        if cn and ct_list:
+                            # 選択された教員名をカンマ区切りで保存
+                            supabase.table("courses_info").insert({
+                                "subject_area": cs, 
+                                "name": cn, 
+                                "teacher_name": ", ".join(ct_list)
+                            }).execute()
+                            st.rerun()
+                        elif not ct_list:
+                            st.error("担当教員を1名以上選択してください。")
     # --- 👨‍🏫 教員管理 ---
     elif sel_menu == m_teacher:
         st.header(m_teacher)
@@ -379,4 +388,5 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
