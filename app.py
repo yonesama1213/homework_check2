@@ -271,15 +271,18 @@ if user_input_email:
                         sel = ed[ed["選択"]==True]["email"].tolist()
                         if st.button("削除実行"): [supabase.table("students").delete().eq("email", m).execute() for m in sel]; st.session_state.hr_sub_page = None; st.rerun()
                 
-                # --- 生徒リストの取得と並び替え (ここを差し替え) ---
+               # --- 生徒リストの取得と表示の調整 ---
                 s_list_res = supabase.table("students").select("number, last_name, first_name, email").eq("grade", sel_g).eq("class", sel_c).execute()
                 if s_list_res.data:
                     df_s_list = pd.DataFrame(s_list_res.data)
                     
-                    # 出席番号(number)ではなく、メールアドレス(email)で並び替える
-                    df_s_list = df_s_list.sort_values("email")
+                    # 項目名をわかりやすく日本語に書き換え
+                    df_s_list.columns = ["番号", "姓", "名", "メールアドレス"]
                     
-                    # 名簿の表示
+                    # メールアドレス順に並び替え
+                    df_s_list = df_s_list.sort_values("メールアドレス")
+                    
+                    # 表示（文字サイズは修正1のCSSで自動的に大きくなります）
                     st.dataframe(df_s_list, hide_index=True, use_container_width=True)
                 # ----------------------------------------------
         else:
@@ -431,6 +434,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
