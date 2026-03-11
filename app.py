@@ -123,28 +123,37 @@ if user_input_email:
         display_data = []
         
         try:
-            # 課題データの取得
+            # 生徒の場合、自分が履修している授業IDとクラスキーを事前に取得
+            my_course_ids = []
+            my_hr_key = ""
+            if is_student and stu_res.data:
+                uc_res = supabase.table("user_courses").select("course_id").eq("user_id", user_email).execute()
+                my_course_ids = [r['course_id'] for r in uc_res.data]
+                s_info = stu_res.data[0]
+                my_hr_key = f"{s_info['grade']}_{s_info['class']}"
+
+            # 全課題データを取得
             t_q = supabase.table("assignments").select("*, courses_info(name, teacher_name)").execute()
+            
             for r in t_q.data:
                 show = False
                 if is_teacher:
-                    # 自分が担当、もしくは自分が担任/副担のHR
-                    if r['courses_info'] and current_user_full_name in r['courses_info']['teacher_name']:
+                    # 教員：自分が担当の授業、または担任・副担のHR課題を表示
+                    if r['courses_info'] and current_user_full_name in str(r['courses_info']['teacher_name']):
                         show = True
                     elif r['hr_key']:
                         h_split = r['hr_key'].split('_')
                         h_res = supabase.table("class_master").select("*").eq("grade", h_split[0]).eq("class_name", h_split[1]).execute()
                         if h_res.data:
                             h = h_res.data[0]
-                            if h['teacher_name'] == current_user_full_name or h['sub_teacher_name'] == current_user_full_name: show = True
-                else:
-                    # 生徒本人の履修科目の課題、または本人のクラスのHR
-                    if r['course_id']:
-                        uc_check = supabase.table("user_courses").select("course_id").eq("user_id", user_email).eq("course_id", r['course_id']).execute()
-                        if len(uc_check.data) > 0: show = True
-                    elif r['hr_key']:
-                        my_hr_key = f"{stu_res.data[0]['grade']}_{stu_res.data[0]['class']}" if is_student else ""
-                        if r['hr_key'] == my_hr_key: show = True
+                            if current_user_full_name in [h['teacher_name'], h['sub_teacher_name']]:
+                                show = True
+                elif is_student:
+                    # 生徒：履修している授業IDに一致するか、自分のクラスのHR課題なら表示
+                    if r['course_id'] and r['course_id'] in my_course_ids:
+                        show = True
+                    elif r['hr_key'] and r['hr_key'] == my_hr_key:
+                        show = True
                 
                 if show:
                     display_data.append({
@@ -489,6 +498,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
