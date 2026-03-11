@@ -236,13 +236,33 @@ if user_input_email:
                     t_indiv, t_csv = st.tabs(["個別", "CSV"])
                     with t_indiv:
                         with st.form("ad_s_i", clear_on_submit=True):
-                            sm = st.text_input("メアド"); c1, c2 = st.columns(2); sl = c1.text_input("姓"); sf = c2.text_input("名"); sn = st.text_input("番号")
-                            if st.form_submit_button("登録"): supabase.table("students").upsert({"email":to_hankaku(sm), "last_name":sl, "first_name":sf, "grade":sel_g, "class":sel_c, "number":to_hankaku(sn)}).execute(); st.success("完了")
+                            sm = st.text_input("メールアドレス")
+                            c1, c2 = st.columns(2)
+                            sl = c1.text_input("姓"); sf = c2.text_input("名")
+                            slf = c1.text_input("姓（フリガナ）"); sff = c2.text_input("名（フリガナ）")
+                            sn = st.text_input("出席番号")
+                            if st.form_submit_button("登録"):
+                                supabase.table("students").upsert({
+                                    "email": to_hankaku(sm).lower(), 
+                                    "last_name": sl, "first_name": sf, 
+                                    "last_name_furi": slf, "first_name_furi": sff,
+                                    "grade": sel_g, "class": sel_c, "number": to_hankaku(sn)
+                                }).execute()
+                                st.success("登録完了")
                     with t_csv:
-                        st.download_button("📥 テンプレート", data=get_csv_template(["メールアドレス", "姓", "名", "出席番号"]), file_name="stu_temp.csv")
-                        up_s = st.file_uploader("生徒CSV", type="csv")
+                        # テンプレートの項目を更新
+                        st.download_button("📥 テンプレート", data=get_csv_template(["メールアドレス", "姓", "名", "姓フリガナ", "名フリガナ", "出席番号"]), file_name="stu_temp.csv")
+                        up_s = st.file_uploader("生徒CSVを選択", type="csv")
                         if up_s and st.button("一括登録実行"):
-                            df = pd.read_csv(io.BytesIO(up_s.read())); [supabase.table("students").upsert({"email":to_hankaku(str(r[0])), "last_name":str(r[1]), "first_name":str(r[2]), "grade":sel_g, "class":sel_c, "number":to_hankaku(str(r[3]))}).execute() for _, r in df.iterrows()]; st.rerun()
+                            df = pd.read_csv(io.BytesIO(up_s.read()))
+                            for _, r in df.iterrows():
+                                supabase.table("students").upsert({
+                                    "email": to_hankaku(str(r[0])).lower(), 
+                                    "last_name": str(r[1]), "first_name": str(r[2]), 
+                                    "last_name_furi": str(r[3]), "first_name_furi": str(r[4]),
+                                    "grade": sel_g, "class": sel_c, "number": to_hankaku(str(r[5]))
+                                }).execute()
+                            st.success("一括登録が完了しました"); st.rerun()
                 elif st.session_state.hr_sub_page == "stu_del":
                     s_res = supabase.table("students").select("*").eq("grade", sel_g).eq("class", sel_c).execute()
                     df_d = pd.DataFrame(s_res.data)
@@ -388,6 +408,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
