@@ -320,12 +320,10 @@ if user_input_email:
         else:
             t1, t2 = st.tabs(["授業一覧", "新規登録"])
             with t1:
-                # 学年順ではなく「教科順」で取得します
+                # 一覧表示のみ
                 c_res = supabase.table("courses_info").select("*").order("subject_area").execute()
                 df_c = pd.DataFrame(c_res.data)
-                
                 if not df_c.empty:
-                    # 学年ごとのループを「教科ごと」のループに変更しました
                     for sa in sorted(df_c['subject_area'].unique()):
                         st.write(f"#### {sa}")
                         gc = df_c[df_c['subject_area'] == sa]
@@ -337,6 +335,20 @@ if user_input_email:
                                     if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): 
                                         st.session_state.selected_course = r['id']
                                         st.rerun()
+                else:
+                    st.info("登録されている授業はありません。")
+
+            with t2:
+                # 新規登録フォーム（学年なし）
+                with st.form("nc"):
+                    cs = st.selectbox("教科", sub_areas)
+                    cn = st.text_input("科目名")
+                    ct = st.selectbox("担当教員", teacher_options)
+                    if st.form_submit_button("登録"):
+                        supabase.table("courses_info").insert({
+                            "subject_area": cs, "name": cn, "teacher_name": ct
+                        }).execute()
+                        st.rerun()
                 else:
                     st.info("登録されている授業はありません。")
                 with st.form("nc"):
