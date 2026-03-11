@@ -331,8 +331,19 @@ if user_input_email:
                                 if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): st.session_state.selected_course = r['id']; st.rerun()
             with t2:
                 with st.form("nc"):
-                    cg = st.selectbox("学年", ["1", "2", "3"]); cs = st.selectbox("教科", sub_areas); cn = st.text_input("科目名"); ct = st.selectbox("担当教員", teacher_options)
-                    if st.form_submit_button("登録"): supabase.table("courses_info").insert({"grade":to_hankaku(cg), "subject_area":cs, "name":cn, "teacher_name":ct}).execute(); st.rerun()
+                    # 学年（cg）の入力を削除し、教科・科目名・担当のみに絞りました
+                    cs = st.selectbox("教科", sub_areas)
+                    cn = st.text_input("科目名")
+                    ct = st.selectbox("担当教員", teacher_options)
+                    
+                    if st.form_submit_button("登録"):
+                        # insert 処理からも "grade" を除外しています
+                        supabase.table("courses_info").insert({
+                            "subject_area": cs, 
+                            "name": cn, 
+                            "teacher_name": ct
+                        }).execute()
+                        st.rerun()
 
     # --- 👨‍🏫 教員管理 ---
     elif sel_menu == m_teacher:
@@ -379,6 +390,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
