@@ -348,12 +348,20 @@ if user_input_email:
                     if st.session_state.edit_email == m:
                         with st.form(f"et_{m}"):
                             c1, c2, c3 = st.columns(3)
-                    ln = c1.text_input("姓", value=r['last_name']); fn = c1.text_input("名", value=r['first_name'])
-                    lnf = c1.text_input("姓フリ", value=r['last_name_furi']); fnf = c2.text_input("名フリ", value=r['first_name_furi'])
-                    
-                    # ↓ メールアドレスの確認・変更用に追加
-                    nm = c2.text_input("メールアドレス", value=r['email'])
-                    sub = c3.text_input("教科", value=r['subject'])
+                            ln = c1.text_input("姓", value=r['last_name']); fn = c1.text_input("名", value=r['first_name'])
+                            lnf = c1.text_input("姓フリ", value=r['last_name_furi']); fnf = c2.text_input("名フリ", value=r['first_name_furi'])
+                            
+                            # メールアドレスの確認・変更用
+                            nm = c2.text_input("メールアドレス", value=r['email'])
+                            sub = c3.text_input("教科", value=r['subject'])
+                            
+                            # 変更を保存するためのボタン
+                            if st.form_submit_button("更新"):
+                                supabase.table("admins").update({
+                                    "last_name":ln, "first_name":fn, "last_name_furi":lnf, 
+                                    "first_name_furi":fnf, "email":to_hankaku(nm).lower(), "subject":sub
+                                }).eq("email", m).execute()
+                                st.session_state.edit_email = None; st.rerun()
                     else:
                         cols = st.columns([2, 2, 2, 1, 1]); cols[0].write(f"{r['last_name']} {r['first_name']}"); cols[1].write(f"{r['last_name_furi']} {r['first_name_furi']}"); cols[2].write(r['subject'])
                         if cols[3].button("編集", key=f"bt_{m}"): st.session_state.edit_email = m; st.rerun()
@@ -371,6 +379,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
