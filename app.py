@@ -278,14 +278,28 @@ if user_input_email:
             with h1:
                 h_res = supabase.table("class_master").select("*").order("grade").order("class_name").execute()
                 df_h = pd.DataFrame(h_res.data)
+                
+                # 生徒数を一括取得してカウントの準備
+                stu_all_res = supabase.table("students").select("grade, class").execute()
+                df_all_stus = pd.DataFrame(stu_all_res.data)
+
                 for g in sorted(df_h['grade'].unique() if not df_h.empty else []):
-                    st.write(f"#### {g}学年"); g_cls = df_h[df_h['grade']==g]; cols = st.columns(4)
+                    st.write(f"#### {g}学年")
+                    g_cls = df_h[df_h['grade']==g]; cols = st.columns(4)
                     for i, (_, r) in enumerate(g_cls.iterrows()):
+                        # このクラスに該当する生徒の数を計算
+                        if not df_all_stus.empty:
+                            count = len(df_all_stus[(df_all_stus['grade'] == r['grade']) & (df_all_stus['class'] == r['class_name'])])
+                        else:
+                            count = 0
+                        
                         with cols[i%4]:
                             with st.container(border=True):
-                                st.write(f"**{r['grade']}年{fix_class_name(r['class_name'])}**")
+                                # クラス名の横に (生徒数名) を表示
+                                st.write(f"**{r['grade']}年{fix_class_name(r['class_name'])}** ({count}名)")
                                 st.write(f"担任: {r['teacher_name']}")
-                                if st.button("詳細", key=f"hb_{r['grade']}_{r['class_name']}", use_container_width=True): st.session_state.selected_hr = f"{r['grade']}_{r['class_name']}"; st.rerun()
+                                if st.button("詳細", key=f"hb_{r['grade']}_{r['class_name']}", use_container_width=True): 
+                                    st.session_state.selected_hr = f"{r['grade']}_{r['class_name']}"; st.rerun()
             with h2:
                 with st.form("n_hr"):
                     gi = st.selectbox("学年", ["1", "2", "3"]); ci = st.text_input("組"); ti = st.selectbox("担任", teacher_options); si = st.selectbox("副担", teacher_options)
@@ -408,6 +422,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
