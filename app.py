@@ -89,8 +89,13 @@ if user_input_email:
     
     # --- 権限によるメニューの切り出し ---
     if is_teacher:
-        # 教員：すべてのページ（6つ）が見れる
-        menu_list = [m_home, m_task_reg, m_hr, m_student, m_course, m_teacher]
+         if is_teacher:
+        　 if user_email == SUPER_ADMIN:
+            # 【管理者】すべてのページ（教員管理を含む6つ）が見れる
+            menu_list = [m_home, m_task_reg, m_hr, m_student, m_course, m_teacher]
+      　   else:
+            # 【教員】教員管理以外の5つのメニューが見れる
+            menu_list = [m_home, m_task_reg, m_hr, m_student, m_course]
     elif is_student:
         # 生徒：ホームと課題登録（2つ）のみ見れる
         menu_list = [m_home, m_task_reg]
@@ -355,3 +360,4 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
