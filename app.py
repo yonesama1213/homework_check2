@@ -298,7 +298,9 @@ if user_input_email:
     elif sel_menu == m_course:
         st.header(m_course)
         sub_areas = ["国語", "社会", "数学", "理科", "英語", "保健体育", "芸術", "家庭科", "情報", "学校設定", "探究", "特別活動"]
+        
         if st.session_state.selected_course:
+            # 【詳細画面】
             cid = st.session_state.selected_course
             if st.button("← 戻る"): st.session_state.selected_course = None; st.rerun()
             crs_res = supabase.table("courses_info").select("*").eq("id", cid).execute()
@@ -307,12 +309,13 @@ if user_input_email:
                 st.subheader(f"📖 【{crs['subject_area']}】 {crs['name']} (担当: {crs['teacher_name']})")
                 b_cols = st.columns(4)
                 if b_cols[0].button("削除"): supabase.table("courses_info").delete().eq("id", cid).execute(); st.session_state.selected_course = None; st.rerun()
-                if b_cols[1].button("一括履修"): st.session_state.course_sub_page = "bulk"; st.rerun()
                 
+                # 履修生徒一覧
                 s_en = supabase.table("user_courses").select("students(class, number, last_name, first_name)").eq("course_id", cid).execute()
                 df_en = pd.DataFrame([{"クラス":r['students']['class'], "番号":r['students']['number'], "氏名":f"{r['students']['last_name']} {r['students']['first_name']}"} for r in s_en.data if r['students']])
                 if not df_en.empty: st.dataframe(df_en.sort_values(["クラス", "番号"]), hide_index=True, use_container_width=True)
         else:
+            # 【一覧と新規登録のタブ】
             t1, t2 = st.tabs(["授業一覧", "新規登録"])
             with t1:
                 c_res = supabase.table("courses_info").select("*").order("subject_area").execute()
@@ -328,10 +331,10 @@ if user_input_email:
                                     st.write(f"**{r['name']}**\n\n{r['teacher_name']}")
                                     if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): 
                                         st.session_state.selected_course = r['id']; st.rerun()
-                else:
-                    st.info("登録されている授業はありません。")
+                else: st.info("登録されている授業はありません。")
 
             with t2:
+                # 新規登録フォーム（学年なし・重複なし）
                 with st.form("nc"):
                     cs = st.selectbox("教科", sub_areas)
                     cn = st.text_input("科目名")
@@ -339,34 +342,6 @@ if user_input_email:
                     if st.form_submit_button("登録"):
                         supabase.table("courses_info").insert({"subject_area": cs, "name": cn, "teacher_name": ct}).execute()
                         st.rerun()
-            with t2:
-                # 新規登録フォーム（学年なし）
-                with st.form("nc"):
-                    cs = st.selectbox("教科", sub_areas)
-                    cn = st.text_input("科目名")
-                    ct = st.selectbox("担当教員", teacher_options)
-                    if st.form_submit_button("登録"):
-                        supabase.table("courses_info").insert({
-                            "subject_area": cs, "name": cn, "teacher_name": ct
-                        }).execute()
-                        st.rerun()
-                else:
-                    st.info("登録されている授業はありません。")
-                with st.form("nc"):
-                    # 学年（cg）の入力を削除し、教科・科目名・担当のみに絞りました
-                    cs = st.selectbox("教科", sub_areas)
-                    cn = st.text_input("科目名")
-                    ct = st.selectbox("担当教員", teacher_options)
-                    
-                    if st.form_submit_button("登録"):
-                        # insert 処理からも "grade" を除外しています
-                        supabase.table("courses_info").insert({
-                            "subject_area": cs, 
-                            "name": cn, 
-                            "teacher_name": ct
-                        }).execute()
-                        st.rerun()
-
     # --- 👨‍🏫 教員管理 ---
     elif sel_menu == m_teacher:
         st.header(m_teacher)
@@ -386,10 +361,7 @@ if user_input_email:
                             nm = c2.text_input("メールアドレス", value=r['email'])
                             sub = c3.text_input("教科", value=r['subject'])
                             if st.form_submit_button("更新"):
-                                supabase.table("admins").update({
-                                    "last_name":ln, "first_name":fn, "last_name_furi":lnf, 
-                                    "first_name_furi":fnf, "email":to_hankaku(nm).lower(), "subject":sub
-                                }).eq("email", m).execute()
+                                supabase.table("admins").update({"last_name":ln, "first_name":fn, "last_name_furi":lnf, "first_name_furi":fnf, "email":to_hankaku(nm).lower(), "subject":sub}).eq("email", m).execute()
                                 st.session_state.edit_email = None; st.rerun()
                     else:
                         cols = st.columns([2, 2, 2, 1, 1]); cols[0].write(f"{r['last_name']} {r['first_name']}"); cols[1].write(f"{r['last_name_furi']} {r['first_name_furi']}"); cols[2].write(r['subject'])
@@ -399,23 +371,12 @@ if user_input_email:
         with t2:
             with st.form("t_reg"):
                 c1, c2 = st.columns(2); ln = c1.text_input("姓"); fn = c2.text_input("名"); lnf = c1.text_input("姓フリ"); fnf = c2.text_input("名フリ"); mail = st.text_input("メアド"); sub = st.text_input("担当教科")
-                if st.form_submit_button("登録"): supabase.table("admins").upsert({"email":to_hankaku(mail), "last_name":ln, "first_name":fn, "last_name_furi":lnf, "first_name_furi":fnf, "subject":sub}).execute(); st.rerun()
+                if st.form_submit_button("登録"): supabase.table("admins").upsert({"email":to_hankaku(mail).lower(), "last_name":ln, "first_name":fn, "last_name_furi":lnf, "first_name_furi":fnf, "subject":sub}).execute(); st.rerun()
         with t3:
             st.download_button("📥 テンプレート", data=get_csv_template(["メールアドレス", "姓", "名", "姓フリガナ", "名フリガナ", "担当教科"]), file_name="t_temp.csv")
             up = st.file_uploader("教員CSVを選択", type="csv")
             if up and st.button("一斉登録"):
-                df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
-
+                df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
-
-
-
-
-
-
-
-
-
-
 
