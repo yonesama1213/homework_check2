@@ -63,6 +63,7 @@ st.sidebar.markdown("# 課題チェック")
 user_input_email = st.sidebar.text_input("ログインメール", placeholder="example@midorigls.onmicrosoft.com", key="login")
 
 if user_input_email:
+    SUPER_ADMIN = "t.yonezawa@midorigls.onmicrosoft.com"
     # 検索用に正規化（半角・すべて小文字化）
     user_email = to_hankaku(user_input_email).lower()
     
@@ -365,6 +366,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
