@@ -63,23 +63,31 @@ st.sidebar.markdown("# 課題チェック")
 user_input_email = st.sidebar.text_input("ログインメール", placeholder="example@midorigls.onmicrosoft.com", key="login")
 
 if user_input_email:
-    # 【重要】検索漏れを防ぐため、入力を小文字・半角に整える
+    # 検索用に正規化（半角・すべて小文字化）
     user_email = to_hankaku(user_input_email).lower()
     
-    # 役割判定
-    admin_res = supabase.table("admins").select("*").eq("email", user_email).execute()
-    stu_res = supabase.table("students").select("*").eq("email", user_email).execute()
+    # 役割判定 (大文字小文字を区別しない .ilike を使用)
+    admin_res = supabase.table("admins").select("*").ilike("email", user_email).execute()
+    stu_res = supabase.table("students").select("*").ilike("email", user_email).execute()
     
     is_teacher = len(admin_res.data) > 0
     is_student = len(stu_res.data) > 0
+
+    # 【救済処置】米澤先生のアドレスなら、DB登録がなくても強制的に教員(管理者)にする
+    if user_email == "t.yonezawa@midorigls.onmicrosoft.com":
+        is_teacher = True
     
-    if is_teacher:
+    # 表示名の設定
+    if is_teacher and len(admin_res.data) > 0:
         u = admin_res.data[0]
         current_user_full_name = f"{u['last_name']} {u['first_name']}"
-    elif is_student:
+    elif is_student and len(stu_res.data) > 0:
         u = stu_res.data[0]
         current_user_full_name = f"{u['last_name']} {u['first_name']}"
-    else: current_user_full_name = "未登録ユーザー"
+    elif user_email == "t.yonezawa@midorigls.onmicrosoft.com":
+        current_user_full_name = "米澤 泰佑 (管理者)"
+    else: 
+        current_user_full_name = "未登録ユーザー"
 
     all_t_data = supabase.table("admins").select("last_name, first_name").execute()
     teacher_options = ["なし"] + [f"{r['last_name']} {r['first_name']}" for r in all_t_data.data]
@@ -89,19 +97,15 @@ if user_input_email:
     
     # --- 権限によるメニューの切り出し ---
     if is_teacher:
-        # 管理者（米澤先生）と一般の先生を分ける
-        if user_email == "T.yonezawa@midorigls.onmicrosoft.com":
-            # 【管理者】すべてのページ（教員管理を含む6つ）が見れる
+        if user_email == "t.yonezawa@midorigls.onmicrosoft.com":
+            # 管理者はすべてのメニューを表示
             menu_list = [m_home, m_task_reg, m_hr, m_student, m_course, m_teacher]
         else:
-            # 【一般教員】教員管理以外の5つのメニューが見れる
+            # 一般教員は教員管理以外を表示
             menu_list = [m_home, m_task_reg, m_hr, m_student, m_course]
-            
     elif is_student:
-        # 【生徒】ホームと課題登録（2つ）のみ見れる
         menu_list = [m_home, m_task_reg]
     else:
-        # 未登録者
         menu_list = [m_home]
     
     st.sidebar.markdown("---")
@@ -361,5 +365,6 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
