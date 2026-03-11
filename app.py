@@ -43,13 +43,13 @@ st.markdown("""
     /* メイン画面の余白調整 */
     .block-container { padding-top: 4rem !important; padding-bottom: 0rem; }
     
-    /* 全体のフォントサイズ調整 */
-    html, body, [class*="ViewContainer"] { font-size: 14px; }
-    .stMarkdown p, .stMarkdown li { font-size: 14px !important; }
-    .stButton button { font-size: 13px !important; padding: 0.2rem 0.5rem; }
-    h1 { font-size: 24px !important; margin-bottom: 15px !important; }
-    h2 { font-size: 18px !important; }
-    .stDataFrame div { font-size: 13px !important; }
+    /* 全体のフォントサイズ調整：14px→16px、13px→14pxへ引き上げ */
+    html, body, [class*="ViewContainer"] { font-size: 16px; }
+    .stMarkdown p, .stMarkdown li { font-size: 16px !important; }
+    .stButton button { font-size: 14px !important; padding: 0.3rem 0.6rem; }
+    h1 { font-size: 26px !important; margin-bottom: 18px !important; }
+    h2 { font-size: 20px !important; }
+    .stDataFrame div { font-size: 15px !important; } /* データフレーム内の文字サイズ */
     </style>
 """, unsafe_allow_html=True)
 
@@ -271,8 +271,17 @@ if user_input_email:
                         sel = ed[ed["選択"]==True]["email"].tolist()
                         if st.button("削除実行"): [supabase.table("students").delete().eq("email", m).execute() for m in sel]; st.session_state.hr_sub_page = None; st.rerun()
                 
-                s_list = supabase.table("students").select("number, last_name, first_name, email").eq("grade", sel_g).eq("class", sel_c).execute()
-                if s_list.data: st.dataframe(pd.DataFrame(s_list.data).sort_values("number"), hide_index=True, use_container_width=True)
+                # --- 生徒リストの取得と並び替え (ここを差し替え) ---
+                s_list_res = supabase.table("students").select("number, last_name, first_name, email").eq("grade", sel_g).eq("class", sel_c).execute()
+                if s_list_res.data:
+                    df_s_list = pd.DataFrame(s_list_res.data)
+                    
+                    # 出席番号(number)ではなく、メールアドレス(email)で並び替える
+                    df_s_list = df_s_list.sort_values("email")
+                    
+                    # 名簿の表示
+                    st.dataframe(df_s_list, hide_index=True, use_container_width=True)
+                # ----------------------------------------------
         else:
             h1, h2 = st.tabs(["一覧", "新規"])
             with h1:
@@ -422,6 +431,7 @@ if user_input_email:
                 df = pd.read_csv(io.BytesIO(up.read())); [supabase.table("admins").upsert({"email":to_hankaku(str(r[0])).lower(), "last_name":str(r[1]), "first_name":str(r[2]), "last_name_furi":str(r[3]), "first_name_furi":str(r[4]), "subject":str(r[5])}).execute() for _, r in df.iterrows()]; st.rerun()
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
