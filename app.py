@@ -385,7 +385,6 @@ if user_input_email:
                             lnf = c1.text_input("姓フリ", value=r['last_name_furi']); fnf = c2.text_input("名フリ", value=r['first_name_furi'])
                             nm = c2.text_input("メールアドレス", value=r['email'])
                             sub = c3.text_input("教科", value=r['subject'])
-                            
                             if st.form_submit_button("更新"):
                                 supabase.table("admins").update({
                                     "last_name":ln, "first_name":fn, "last_name_furi":lnf, 
@@ -409,6 +408,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
