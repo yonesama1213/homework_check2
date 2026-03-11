@@ -58,12 +58,13 @@ states = ['edit_email', 'edit_student_email', 'edit_hr_key', 'selected_hr', 'hr_
 for s in states:
     if s not in st.session_state: st.session_state[s] = None
 
-# --- 3. サイドバー構成 ---
+# --- 3. サイドバー構成 --- (75行目あたりから差し替え)
 st.sidebar.markdown("# 課題チェック")
-user_email = st.sidebar.text_input("ログインメール", placeholder="example@midorigls.onmicrosoft.com", key="login")
+user_input_email = st.sidebar.text_input("ログインメール", placeholder="example@midorigls.onmicrosoft.com", key="login")
 
-if user_email:
-    SUPER_ADMIN = "T.yonezawa@midorigls.onmicrosoft.com"
+if user_input_email:
+    # 【重要】検索漏れを防ぐため、入力を小文字・半角に整える
+    user_email = to_hankaku(user_input_email).lower()
     
     # 役割判定
     admin_res = supabase.table("admins").select("*").eq("email", user_email).execute()
@@ -71,7 +72,6 @@ if user_email:
     
     is_teacher = len(admin_res.data) > 0
     is_student = len(stu_res.data) > 0
-    is_super_admin = (user_email == SUPER_ADMIN)
     
     if is_teacher:
         u = admin_res.data[0]
@@ -84,16 +84,23 @@ if user_email:
     all_t_data = supabase.table("admins").select("last_name, first_name").execute()
     teacher_options = ["なし"] + [f"{r['last_name']} {r['first_name']}" for r in all_t_data.data]
 
+    # メニュー名の定義
     m_home, m_task_reg, m_hr, m_student, m_course, m_teacher = "🏠 ホーム", "📝 課題登録", "🏫 HR管理", "👥 生徒管理", "📖 授業管理", "👨‍🏫 教員管理"
-    menu_list = [m_home]
-    if is_teacher or is_student: menu_list += [m_task_reg]
-    if is_teacher: menu_list += [m_hr, m_course]
-    if is_super_admin: menu_list += [m_student, m_teacher]
+    
+    # --- 権限によるメニューの切り出し ---
+    if is_teacher:
+        # 教員：すべてのページ（6つ）が見れる
+        menu_list = [m_home, m_task_reg, m_hr, m_student, m_course, m_teacher]
+    elif is_student:
+        # 生徒：ホームと課題登録（2つ）のみ見れる
+        menu_list = [m_home, m_task_reg]
+    else:
+        # 未登録者
+        menu_list = [m_home]
     
     st.sidebar.markdown("---")
-    st.sidebar.write("**メニュー**")
+    st.sidebar.write(f"**{current_user_full_name} さん**")
     sel_menu = st.sidebar.radio("menu_nav", menu_list, label_visibility="collapsed")
-
     def get_csv_template(cols):
         df = pd.DataFrame(columns=cols)
         buf = io.BytesIO(); df.to_csv(buf, index=False, encoding='utf-8-sig')
