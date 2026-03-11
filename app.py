@@ -320,16 +320,25 @@ if user_input_email:
         else:
             t1, t2 = st.tabs(["授業一覧", "新規登録"])
             with t1:
-                c_res = supabase.table("courses_info").select("*").order("grade").execute()
+                # 学年順ではなく「教科順」で取得します
+                c_res = supabase.table("courses_info").select("*").order("subject_area").execute()
                 df_c = pd.DataFrame(c_res.data)
-                for g in sorted(df_c['grade'].unique() if not df_c.empty else []):
-                    st.write(f"#### {g}学年"); gc = df_c[df_c['grade']==g]; cols = st.columns(4)
-                    for i, (_, r) in enumerate(gc.iterrows()):
-                        with cols[i%4]:
-                            with st.container(border=True):
-                                st.write(f"**{r['name']}**\n\n{r['teacher_name']}")
-                                if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): st.session_state.selected_course = r['id']; st.rerun()
-            with t2:
+                
+                if not df_c.empty:
+                    # 学年ごとのループを「教科ごと」のループに変更しました
+                    for sa in sorted(df_c['subject_area'].unique()):
+                        st.write(f"#### {sa}")
+                        gc = df_c[df_c['subject_area'] == sa]
+                        cols = st.columns(4)
+                        for i, (_, r) in enumerate(gc.iterrows()):
+                            with cols[i%4]:
+                                with st.container(border=True):
+                                    st.write(f"**{r['name']}**\n\n{r['teacher_name']}")
+                                    if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): 
+                                        st.session_state.selected_course = r['id']
+                                        st.rerun()
+                else:
+                    st.info("登録されている授業はありません。")
                 with st.form("nc"):
                     # 学年（cg）の入力を削除し、教科・科目名・担当のみに絞りました
                     cs = st.selectbox("教科", sub_areas)
@@ -390,6 +399,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
