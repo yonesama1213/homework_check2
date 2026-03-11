@@ -304,23 +304,17 @@ if user_input_email:
             crs_res = supabase.table("courses_info").select("*").eq("id", cid).execute()
             if crs_res.data:
                 crs = crs_res.data[0]
-                st.subheader(f"📖 {crs['grade']}年 【{crs['subject_area']}】 {crs['name']} (担当: {crs['teacher_name']})")
+                st.subheader(f"📖 【{crs['subject_area']}】 {crs['name']} (担当: {crs['teacher_name']})")
                 b_cols = st.columns(4)
                 if b_cols[0].button("削除"): supabase.table("courses_info").delete().eq("id", cid).execute(); st.session_state.selected_course = None; st.rerun()
                 if b_cols[1].button("一括履修"): st.session_state.course_sub_page = "bulk"; st.rerun()
-                if st.session_state.course_sub_page == "bulk":
-                    h_list = supabase.table("class_master").select("grade, class_name").execute()
-                    sh = st.selectbox("クラス選択", [f"{r['grade']}年{r['class_name']}" for r in h_list.data])
-                    if st.button("登録実行"):
-                        gv, cv = sh.split('年'); stus = supabase.table("students").select("email").eq("grade", gv).eq("class", cv).execute()
-                        [supabase.table("user_courses").upsert({"user_id": s['email'], "course_id": cid}).execute() for s in stus.data]; st.rerun()
+                
                 s_en = supabase.table("user_courses").select("students(class, number, last_name, first_name)").eq("course_id", cid).execute()
                 df_en = pd.DataFrame([{"クラス":r['students']['class'], "番号":r['students']['number'], "氏名":f"{r['students']['last_name']} {r['students']['first_name']}"} for r in s_en.data if r['students']])
                 if not df_en.empty: st.dataframe(df_en.sort_values(["クラス", "番号"]), hide_index=True, use_container_width=True)
         else:
             t1, t2 = st.tabs(["授業一覧", "新規登録"])
             with t1:
-                # 一覧表示のみ
                 c_res = supabase.table("courses_info").select("*").order("subject_area").execute()
                 df_c = pd.DataFrame(c_res.data)
                 if not df_c.empty:
@@ -333,11 +327,18 @@ if user_input_email:
                                 with st.container(border=True):
                                     st.write(f"**{r['name']}**\n\n{r['teacher_name']}")
                                     if st.button("詳細", key=f"cb_{r['id']}", use_container_width=True): 
-                                        st.session_state.selected_course = r['id']
-                                        st.rerun()
+                                        st.session_state.selected_course = r['id']; st.rerun()
                 else:
                     st.info("登録されている授業はありません。")
 
+            with t2:
+                with st.form("nc"):
+                    cs = st.selectbox("教科", sub_areas)
+                    cn = st.text_input("科目名")
+                    ct = st.selectbox("担当教員", teacher_options)
+                    if st.form_submit_button("登録"):
+                        supabase.table("courses_info").insert({"subject_area": cs, "name": cn, "teacher_name": ct}).execute()
+                        st.rerun()
             with t2:
                 # 新規登録フォーム（学年なし）
                 with st.form("nc"):
@@ -408,6 +409,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
