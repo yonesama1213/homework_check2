@@ -382,12 +382,9 @@ if user_input_email:
                             c1, c2, c3 = st.columns(3)
                             ln = c1.text_input("姓", value=r['last_name']); fn = c1.text_input("名", value=r['first_name'])
                             lnf = c1.text_input("姓フリ", value=r['last_name_furi']); fnf = c2.text_input("名フリ", value=r['first_name_furi'])
-                            
-                            # メールアドレスの確認・変更用
                             nm = c2.text_input("メールアドレス", value=r['email'])
                             sub = c3.text_input("教科", value=r['subject'])
                             
-                            # 変更を保存するためのボタン
                             if st.form_submit_button("更新"):
                                 supabase.table("admins").update({
                                     "last_name":ln, "first_name":fn, "last_name_furi":lnf, 
@@ -411,6 +408,7 @@ if user_input_email:
 
 else:
     st.info("サイドバーにログイン情報を入力してください。")
+
 
 
 
